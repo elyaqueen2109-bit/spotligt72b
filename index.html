@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Game — A Classic Read</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Kalam:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #f5f0e8; --beige: #ebe2d3; --sepia: #a67c52;
+    --sepia-dark: #8b6f47; --brown: #4a3728; --ink: #1a1a1a;
+    --red: #8b2f2f; --white: #ffffff; --green: #4a7a4a;
+  }
+  body {
+    font-family: 'Crimson Text', Georgia, serif;
+    background: var(--cream);
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(166,124,82,0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(139,111,71,0.08) 0%, transparent 50%);
+    min-height: 100vh; padding: 30px 15px; color: var(--ink);
+  }
+  .container {
+    max-width: 920px; margin: 0 auto;
+    background: var(--white); border-radius: 4px;
+    padding: 40px 35px;
+    box-shadow: 0 2px 4px rgba(74,55,40,0.1), 0 15px 40px rgba(74,55,40,0.15);
+    position: relative;
+  }
+  .container::before {
+    content: ''; position: absolute; top: -14px; left: 40px;
+    width: 130px; height: 30px;
+    background: repeating-linear-gradient(45deg, rgba(166,124,82,0.7) 0 6px, rgba(217,200,169,0.85) 6px 12px);
+    transform: rotate(-3deg); box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+  header {
+    text-align: center; margin-bottom: 25px;
+    padding-bottom: 20px; border-bottom: 2px dashed var(--sepia);
+    position: relative;
+  }
+  h1 {
+    font-family: 'Caveat', cursive; color: var(--brown);
+    font-size: 64px; line-height: 1; margin-bottom: 8px;
+  }
+  .subtitle {
+    font-family: 'Special Elite', monospace; color: var(--sepia-dark);
+    font-size: 13px; letter-spacing: 3px; text-transform: uppercase;
+  }
+  .header-actions {
+    position: absolute; top: 15px; right: 15px;
+  }
+  .sound-toggle {
+    background: var(--cream); border: 2px solid var(--sepia);
+    border-radius: 50%; width: 44px; height: 44px;
+    font-size: 20px; cursor: pointer; transition: all 0.2s;
+  }
+  .sound-toggle:hover { background: var(--beige); transform: scale(1.08); }
+  .sound-toggle.muted { opacity: 0.5; }
+
+  h2 {
+    font-family: 'Caveat', cursive; color: var(--brown);
+    font-size: 42px; margin-bottom: 5px; line-height: 1;
+    text-align: center;
+  }
+  .section-label {
+    font-family: 'Special Elite', monospace;
+    color: var(--sepia-dark); font-size: 12px;
+    letter-spacing: 3px; text-transform: uppercase;
+    margin-bottom: 20px; display: block; text-align: center;
+  }
+
+  /* MEMORY GAME GRID */
+  .memory-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    max-width: 700px;
+    margin: 30px auto;
+    perspective: 1000px;
+  }
+  @media (max-width: 600px) {
+    .memory-grid { gap: 8px; }
+  }
+
+  .memory-card {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.5s;
+  }
+  .memory-card.flipped { transform: rotateY(180deg); }
+  
+  .memory-card.matched {
+    transform: rotateY(180deg);
+    pointer-events: none;
+  }
+
+  .card-face {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    backface-visibility: hidden;
+    border-radius: 6px;
+    border: 3px solid var(--sepia);
+    box-shadow: 2px 2px 0 var(--beige);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Рубашка */
+  .card-back {
+    background-color: var(--brown);
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 10px, transparent 10px 20px);
+  }
+  .card-back::after {
+    content: '★';
+    font-size: 40px;
+    color: var(--beige);
+    opacity: 0.3;
+  }
+
+  /* Лицо карточки */
+  .card-front {
+    background: var(--white);
+    transform: rotateY(180deg);
+    flex-direction: column;
+    padding: 0;
+  }
+  
+  /* Картинка */
+  .card-image {
+    width: 100%; height: 100%;
+    background-image: url('vocab2b.jpg'); /* Картинка для 2b */
+    background-repeat: no-repeat;
+  }
+
+  /* Русский перевод */
+  .card-word {
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    color: var(--brown);
+    text-align: center;
+    font-weight: 700;
+    padding: 10px;
+    line-height: 1.1;
+  }
+
+  /* Анимация совпадения */
+  .memory-card.matched .card-front {
+    border-color: var(--green);
+    background: #e6f4e6;
+    animation: matchPulse 0.5s ease;
+  }
+  @keyframes matchPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  /* Кнопки */
+  .controls { text-align: center; margin-top: 30px; }
+  .btn {
+    background: var(--brown); color: var(--cream);
+    border: none; padding: 14px 32px;
+    border-radius: 4px; font-family: 'Special Elite', monospace;
+    font-size: 14px; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 3px 3px 0 var(--sepia);
+  }
+  .btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--sepia);
+    background: #3a2a1d;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Memory Game</h1>
+    <p class="subtitle">Find the pairs · A Classic Read</p>
+    <div class="header-actions">
+      <button id="soundToggle" class="sound-toggle" onclick="toggleSound()">🔊</button>
+    </div>
+  </header>
+
+  <h2>Find the pairs!</h2>
+  <span class="section-label">Match the picture with the Russian word</span>
+
+  <div class="memory-grid" id="memoryGrid"></div>
+
+  <div class="controls">
+    <button class="btn" onclick="initGame()">🔄 Restart Game</button>
+  </div>
+</div>
+
+<script>
+// ============ SOUND ENGINE ============
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(freq, startTime, duration, type = 'sine', volume = 0.15) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(startTime); osc.stop(startTime + duration);
+}
+function playCorrect() {
+  if (!soundEnabled) return; initAudio();
+  const now = audioCtx.currentTime;
+  playTone(523.25, now, 0.12);
+  playTone(659.25, now + 0.08, 0.12);
+  playTone(783.99, now + 0.16, 0.25);
+}
+function playWrong() {
+  if (!soundEnabled) return; initAudio();
+  const now = audioCtx.currentTime;
+  playTone(220, now, 0.15, 'sine', 0.08);
+  playTone(180, now + 0.1, 0.25, 'sine', 0.08);
+}
+function playFanfare() {
+  if (!soundEnabled) return; initAudio();
+  const now = audioCtx.currentTime;
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, now + i * 0.12, 0.18, 'triangle', 0.12));
+}
+function playClick() {
+  if (!soundEnabled) return; initAudio();
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.value = 600;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.05, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(now); osc.stop(now + 0.06);
+}
+
+// ============ VOICE ============
+function speakPhrase(text, lang = 'en-GB', rate = 0.9) {
+  if (!soundEnabled || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = rate; u.pitch = 1.1;
+  window.speechSynthesis.speak(u);
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('soundToggle');
+  btn.textContent = soundEnabled ? '🔊' : '🔇';
+  btn.style.opacity = soundEnabled ? '1' : '0.5';
+  if (!soundEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+document.addEventListener('click', initAudio, { once: true });
+
+// ============ DATA & COORDINATES ============
+// Размер твоей картинки (по твоим координатам)
+const IMG_W = 1344;
+const IMG_H = 768;
+
+// Твои координаты + русские переводы
+const vocab = [
+  { word: 'look around', ru: 'осмотреть',   x: 53,   y: 148, w: 227, h: 184 },
+  { word: 'huge',        ru: 'огромный',    x: 319,  y: 152, w: 223, h: 182 },
+  { word: 'amazed',      ru: 'изумлённый',  x: 575,  y: 155, w: 225, h: 178 },
+  { word: 'initials',    ru: 'инициалы',    x: 836,  y: 154, w: 226, h: 180 },
+  { word: 'compass',     ru: 'компас',      x: 1088, y: 157, w: 218, h: 179 },
+  { word: 'hide',        ru: 'прятаться',   x: 63,   y: 348, w: 216, h: 175 },
+  { word: 'ancient',     ru: 'древний',     x: 320,  y: 352, w: 223, h: 180 },
+  { word: 'discover',    ru: 'обнаружить',  x: 573,  y: 352, w: 227, h: 176 },
+  { word: 'explore',     ru: 'исследовать', x: 827,  y: 349, w: 230, h: 182 },
+  { word: 'dangerous',   ru: 'опасный',     x: 1084, y: 348, w: 221, h: 181 },
+  { word: 'raft',        ru: 'плот',        x: 61,   y: 545, w: 223, h: 176 },
+  { word: 'cave',        ru: 'пещера',      x: 327,  y: 545, w: 235, h: 184 },
+  { word: 'journey',     ru: 'путешествие', x: 608,  y: 546, w: 226, h: 188 },
+  { word: 'message',     ru: 'послание',    x: 873,  y: 542, w: 206, h: 197 },
+  { word: 'knife',       ru: 'нож',         x: 1102, y: 550, w: 208, h: 184 }
+];
+
+let gamePairs = [];
+let cardsData = [];
+let firstCard = null;
+let secondCard = null;
+let lockBoard = false;
+let matchedPairs = 0;
+
+// ============ INIT ============
+function initGame() {
+  gamePairs = [...vocab].sort(() => Math.random() - 0.5).slice(0, 8);
+  
+  cardsData = [];
+  gamePairs.forEach((item, index) => {
+    cardsData.push({ id: index, type: 'image', data: item });
+    cardsData.push({ id: index, type: 'word', data: item });
+  });
+  
+  cardsData.sort(() => Math.random() - 0.5);
+  
+  firstCard = null;
+  secondCard = null;
+  lockBoard = false;
+  matchedPairs = 0;
+  
+  renderBoard();
+}
+
+// ============ RENDER ============
+function renderBoard() {
+  const grid = document.getElementById('memoryGrid');
+  grid.innerHTML = '';
+  
+  cardsData.forEach((card, index) => {
+    const cardEl = document.createElement('div');
+    cardEl.className = 'memory-card';
+    cardEl.dataset.index = index;
+    
+    cardEl.innerHTML = `
+      <div class="card-face card-back"></div>
+      <div class="card-face card-front">
+        ${card.type === 'image' 
+          ? `<div class="card-image" data-word="${card.data.word}"></div>` 
+          : `<div class="card-word">${card.data.ru}</div>`
+        }
+      </div>
+    `;
+    
+    cardEl.addEventListener('click', () => flipCard(cardEl, card));
+    grid.appendChild(cardEl);
+  });
+  
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.card-image').forEach(imgEl => {
+      const word = imgEl.dataset.word;
+      const item = vocab.find(v => v.word === word);
+      if (!item) return;
+      
+      const rect = imgEl.getBoundingClientRect();
+      const cw = rect.width;
+      const ch = rect.height;
+      if (cw === 0 || ch === 0) return;
+
+      const scaleX = cw / item.w;
+      const scaleY = ch / item.h;
+      const scale = Math.max(scaleX, scaleY);
+
+      const bgW = IMG_W * scale;
+      const bgH = IMG_H * scale;
+      const bgX = -(item.x * scale) + (cw - item.w * scale) / 2;
+      const bgY = -(item.y * scale) + (ch - item.h * scale) / 2;
+
+      imgEl.style.backgroundImage = "url('vocab2b.jpg')";
+      imgEl.style.backgroundSize = `${bgW}px ${bgH}px`;
+      imgEl.style.backgroundPosition = `${bgX}px ${bgY}px`;
+    });
+  });
+}
+
+// ============ GAME LOGIC ============
+function flipCard(cardEl, card) {
+  if (lockBoard) return;
+  if (cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+  
+  playClick();
+  cardEl.classList.add('flipped');
+  
+  if (!firstCard) {
+    firstCard = { el: cardEl, data: card };
+  } else {
+    secondCard = { el: cardEl, data: card };
+    checkMatch();
+  }
+}
+
+function checkMatch() {
+  const isMatch = (firstCard.data.id === secondCard.data.id);
+  
+  if (isMatch) {
+    firstCard.el.classList.add('matched');
+    secondCard.el.classList.add('matched');
+    
+    if (soundEnabled) speakPhrase(firstCard.data.data.word, 'en-GB', 0.9);
+    playCorrect();
+    
+    matchedPairs++;
+    resetBoard();
+    
+    if (matchedPairs === 8) {
+      setTimeout(() => {
+        playFanfare();
+        speakPhrase("Perfect! You found all pairs!");
+      }, 600);
+    }
+  } else {
+    lockBoard = true;
+    playWrong();
+    setTimeout(() => {
+      firstCard.el.classList.remove('flipped');
+      secondCard.el.classList.remove('flipped');
+      resetBoard();
+    }, 1200);
+  }
+}
+
+function resetBoard() {
+  firstCard = null;
+  secondCard = null;
+  lockBoard = false;
+}
+
+// ============ RESIZE ============
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.card-image').forEach(imgEl => {
+    const word = imgEl.dataset.word;
+    const item = vocab.find(v => v.word === word);
+    if (!item) return;
+    
+    const rect = imgEl.getBoundingClientRect();
+    const cw = rect.width, ch = rect.height;
+    if (cw === 0 || ch === 0) return;
+    
+    const scaleX = cw / item.w;
+    const scaleY = ch / item.h;
+    const scale = Math.max(scaleX, scaleY);
+
+    const bgW = IMG_W * scale;
+    const bgH = IMG_H * scale;
+    const bgX = -(item.x * scale) + (cw - item.w * scale) / 2;
+    const bgY = -(item.y * scale) + (ch - item.h * scale) / 2;
+
+    imgEl.style.backgroundSize = `${bgW}px ${bgH}px`;
+    imgEl.style.backgroundPosition = `${bgX}px ${bgY}px`;
+  });
+});
+
+initGame();
+</script>
+</body>
+</html>
